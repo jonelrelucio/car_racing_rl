@@ -1,0 +1,16 @@
+environment:
+  name: CarRacing-v3
+  render_mode: human
+  action_type: discrete # discrete or continous
+  policy: random # random or trained
+
+hyperparameters:
+  learning_rate: 0.01      
+  gamma: 0.1              
+
+  discount_factor: 0.99 
+  
+  # Exploration Strategy
+  epsilon: 0.1 
+  exploration_decay: 0.99   
+  final_epsilon: 0.1

@@ -26,17 +26,24 @@ class CarRacingAgent:
         self.training_error = []       
 
 
-    def get_action(self, observation):
-        if rnd.random() < self.epsilon:
-            return np.max(self.q_values[observation])
+    def get_action(self, obs):
+        if rnd.random() < (1 - self.epsilon):
+            return np.argmax(self.q_values[obs])
         else:
-            return np.array([0.0, 1.0, 0.0])
+            return self.env.action_space.sample()
         
-    def update(self, curr_state, action, reward, next_state):
-        best_next_q = np.max(self.q_values[next_state])
-        self.q_values[curr_state][action] = (1 - self.learning_rate) * self.q_values[curr_state][action] + self.learning_rate * (reward + self.discount_factor * best_next_q)
+    def update(self, curr_obs, action, reward, next_obs):
+        future_q_value= np.max(self.q_values[next_obs])
+        past_q_value = (1 - self.q_values[curr_obs][action])
+        target = self.learning_rate * (reward + self.discount_factor * future_q_value)
+        self.q_values[curr_obs][action] = past_q_value + target
 
-
+def totuple(a):
+    try:
+        return tuple(totuple(i) for i in a)
+    except TypeError:
+        return a
+    
 def main():
     with open("config.yaml", "r") as f:
         try:
@@ -49,17 +56,28 @@ def main():
                     render_mode=config["environment"]["render_mode"], 
                     lap_complete_percent=0.95, 
                     domain_randomize=False, 
-                    continuous=config["environment"]["action_type"])
+                    continuous=False)
     agent = CarRacingAgent(config, env)
+    n_episodes = config["environment"]["n_episodes"]
 
-    observation, info = env.reset(seed=42)
+    for _ in range(n_episodes):
+        observation, info = env.reset(seed=42)
+        observation = totuple(observation)
+        done = False
+        while not done:
+            action = agent.get_action(observation)
+            next_observation, reward, terminated, truncated, info = env.step(action)
+            next_observation = totuple(next_observation)
 
-    for _ in range(1000):
-        action = agent.get_action(observation)
-        observation, reward, terminated, truncated, info = env.step(action)
+            agent.update(observation, action, reward, next_observation)
+            observation = next_observation
 
-        if terminated or truncated:
-            observation, info = env.reset(seed=42)
+            done = terminated or truncated
+
+            done = terminated or truncated
+        agent.epsilon *= agent.exploration_decay
+
+
 
     env.close()
 
